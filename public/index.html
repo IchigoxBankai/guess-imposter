@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Imposter - Real-Time Party Game</title>
+  <meta name="description" content="A real-time multiplayer party game: Guess the Imposter!">
+  <link rel="stylesheet" href="style.css">
+  <!-- Load Socket.IO client library -->
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+  <div class="app-container">
+    <header class="header">
+      <h1 class="logo">IMPOSTER</h1>
+    </header>
+
+    <!-- Error Message Banner -->
+    <div id="error-banner" class="error-banner hidden"></div>
+
+    <main class="main-content">
+      <!-- 1. WELCOME SCREEN -->
+      <section id="welcome-screen" class="screen">
+        <div class="card">
+          <h2>Welcome to Imposter</h2>
+          <div class="input-group">
+            <label for="player-name">Your Name</label>
+            <input type="text" id="player-name" placeholder="Enter your name" maxlength="15" autocomplete="off">
+          </div>
+          
+          <div class="actions">
+            <button id="btn-create" class="btn primary">Create Room</button>
+            <button id="btn-demo" class="btn success" style="margin-top: 10px;">Play Demo (with 3 Bots)</button>
+            <div class="divider">or</div>
+            <div class="join-group">
+              <input type="text" id="room-code-input" placeholder="Room Code" maxlength="4" autocomplete="off">
+              <button id="btn-join" class="btn secondary">Join Room</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. LOBBY SCREEN -->
+      <section id="lobby-screen" class="screen hidden">
+        <div class="card">
+          <div class="lobby-header">
+            <h2>Lobby</h2>
+            <div class="room-code-display">
+              <span>Room Code</span>
+              <span id="display-room-code" class="code-badge">----</span>
+            </div>
+          </div>
+          
+          <div class="player-list-section">
+            <h3>Connected Players (<span id="player-count">0</span>)</h3>
+            <ul id="player-list" class="player-list">
+              <!-- Dynamically populated -->
+            </ul>
+          </div>
+
+          <div class="lobby-actions">
+            <p id="lobby-status-text" class="status-text">Waiting for host to start...</p>
+            <button id="btn-start" class="btn success hidden">Start Game</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. GAME SCREEN -->
+      <section id="game-screen" class="screen hidden">
+        <div class="card game-card">
+          <div class="game-header">
+            <span id="player-role-indicator" class="role-badge">Player</span>
+            <div class="timer-display">
+              <span id="timer-text">05:00</span>
+            </div>
+          </div>
+
+          <div class="word-reveal-area">
+            <p class="reveal-hint">Your Secret Word is:</p>
+            <h2 id="secret-word" class="secret-word">------</h2>
+          </div>
+
+          <div class="game-footer">
+            <p>Do not show your screen to other players!</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. TIME'S UP SCREEN -->
+      <section id="times-up-screen" class="screen hidden">
+        <div class="card final-card">
+          <h2 class="alert-title">Time's Up!</h2>
+          <p class="final-instruction">Discuss amongst yourselves and vote on who you think the Imposter is.</p>
+          <button id="btn-reset" class="btn primary">Play Again</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="main.js"></script>
+</body>
+</html>
