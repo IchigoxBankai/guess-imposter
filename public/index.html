@@ -10,9 +10,15 @@
 </head>
 <body>
   <div class="app-container" id="app-wrapper">
+    <!-- Circular Back Arrow Button -->
+    <button id="btn-back-nav" class="btn-back-circular hidden" aria-label="Go Back">
+      <svg viewBox="0 0 24 24" style="width: 22px; height: 22px; display: block;">
+        <path fill="currentColor" d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/>
+      </svg>
+    </button>
+
     <!-- Header -->
-    <header class="header" style="position: relative;">
-      <button id="btn-back-nav" class="btn btn-secondary btn-text-small hidden" style="position: absolute; left: 0; top: 50%; transform: translateY(-50%); font-size: 1.5rem; padding: 4px 12px; width: auto; border: none; background: transparent; color: var(--text-secondary); cursor: pointer;">←</button>
+    <header class="header">
       <h1 class="logo">SECRET SIGNAL</h1>
     </header>
 
