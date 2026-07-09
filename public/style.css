@@ -36,7 +36,11 @@
 
 body {
   font-family: var(--font-main);
-  background: var(--bg-gradient);
+  background-image: url('bg-mockup.png');
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
   color: var(--text-primary);
   min-height: 100vh;
   display: flex;
@@ -54,6 +58,9 @@ body {
   display: flex;
   flex-direction: column;
   position: relative;
+  background: rgba(7, 9, 19, 0.4);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
 }
 
 /* Header & Logo */
