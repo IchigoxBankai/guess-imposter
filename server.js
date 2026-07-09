@@ -55,6 +55,7 @@ function broadcastRoomUpdate(roomCode) {
     code: roomCode,
     players: room.players.map(p => ({
       id: p.id,
+      sessionToken: p.sessionToken,
       name: p.name,
       avatar: p.avatar,
       isHost: p.isHost,
@@ -75,6 +76,25 @@ function stopRoomTimer(room) {
   }
 }
 
+// Helper: safe interval setter to avoid duplicates
+function startRoomTimer(room, duration, onTick, onComplete) {
+  stopRoomTimer(room);
+  room.timeLeft = duration;
+  
+  // Initial tick update
+  onTick(room.timeLeft);
+
+  room.timerInterval = setInterval(() => {
+    room.timeLeft--;
+    onTick(room.timeLeft);
+
+    if (room.timeLeft <= 0) {
+      stopRoomTimer(room);
+      onComplete();
+    }
+  }, 1000);
+}
+
 // Handle speaking turn progression
 function nextSpeakingTurn(room) {
   stopRoomTimer(room);
@@ -83,7 +103,7 @@ function nextSpeakingTurn(room) {
   let nextIndex = room.speakingIndex + 1;
   while (nextIndex < room.speakingOrder.length) {
     const nextPlayerId = room.speakingOrder[nextIndex];
-    const player = room.players.find(p => p.id === nextPlayerId || p.sessionToken === nextPlayerId);
+    const player = room.players.find(p => p.sessionToken === nextPlayerId || p.id === nextPlayerId);
     if (player && !player.isEliminated && player.isOnline) {
       room.speakingIndex = nextIndex;
       startSpeakerTimer(room, player);
@@ -99,35 +119,43 @@ function nextSpeakingTurn(room) {
 // Start timer for a speaker
 function startSpeakerTimer(room, player) {
   room.activeSpeakerId = player.sessionToken || player.id;
-  room.timeLeft = room.settings.speakingTime;
   
   io.to(room.code).emit('speakingTurnUpdate', {
     activeSpeakerId: room.activeSpeakerId,
-    timeLeft: room.timeLeft,
+    timeLeft: room.settings.speakingTime,
     index: room.speakingIndex + 1,
     total: room.players.filter(p => !p.isEliminated).length
   });
 
-  room.timerInterval = setInterval(() => {
-    room.timeLeft--;
-    io.to(room.code).emit('timerUpdate', { timeLeft: room.timeLeft });
+  // Simulated bot response: auto-advance bot after 2.5s
+  if (player.id.startsWith('bot') || player.sessionToken.startsWith('bot')) {
+    setTimeout(() => {
+      if (room.phase === 'SPEAKING' && room.activeSpeakerId === (player.sessionToken || player.id)) {
+        nextSpeakingTurn(room);
+      }
+    }, 2500);
+  }
 
-    if (room.timeLeft <= 0) {
+  startRoomTimer(room, room.settings.speakingTime, 
+    (timeLeft) => {
+      io.to(room.code).emit('timerUpdate', { timeLeft });
+    },
+    () => {
       nextSpeakingTurn(room);
     }
-  }, 1000);
+  );
 }
 
 // Start Voting Phase
 function startVotingPhase(room) {
   room.phase = 'VOTING';
   room.votes = {}; // voterId -> votedTargetId
-  room.timeLeft = room.settings.votingTime;
   stopRoomTimer(room);
+  broadcastRoomUpdate(room.code);
 
   io.to(room.code).emit('phaseTransition', {
     phase: room.phase,
-    timeLeft: room.timeLeft,
+    timeLeft: room.settings.votingTime,
     players: room.players.map(p => ({
       id: p.sessionToken || p.id,
       name: p.name,
@@ -136,14 +164,14 @@ function startVotingPhase(room) {
     }))
   });
 
-  room.timerInterval = setInterval(() => {
-    room.timeLeft--;
-    io.to(room.code).emit('timerUpdate', { timeLeft: room.timeLeft });
-
-    if (room.timeLeft <= 0) {
+  startRoomTimer(room, room.settings.votingTime,
+    (timeLeft) => {
+      io.to(room.code).emit('timerUpdate', { timeLeft });
+    },
+    () => {
       endVotingPhase(room);
     }
-  }, 1000);
+  );
 }
 
 // Complete voting calculation and elimination
@@ -284,6 +312,7 @@ function endVotingPhase(room) {
 // Start Speaking Turns Phase
 function startSpeakingTurns(room) {
   room.phase = 'SPEAKING';
+  broadcastRoomUpdate(room.code);
   
   // Randomize speaking order for all uneliminated players
   const activePlayers = room.players.filter(p => !p.isEliminated && p.isOnline);
@@ -582,25 +611,24 @@ io.on('connection', (socket) => {
     });
 
     // Notify clients of role reveal and set 5-second countdown timer
-    room.timeLeft = 5;
-    stopRoomTimer(room);
+    broadcastRoomUpdate(room.code);
 
     room.players.forEach(p => {
       io.to(p.id).emit('roleRevealInit', {
         word: p.word,
         role: (p.sessionToken === room.imposterToken) ? 'IMPOSTER' : 'CIVILIAN',
-        timeLeft: room.timeLeft
+        timeLeft: 5
       });
     });
 
-    room.timerInterval = setInterval(() => {
-      room.timeLeft--;
-      io.to(room.code).emit('timerUpdate', { timeLeft: room.timeLeft });
-
-      if (room.timeLeft <= 0) {
+    startRoomTimer(room, 5,
+      (timeLeft) => {
+        io.to(room.code).emit('timerUpdate', { timeLeft });
+      },
+      () => {
         startSpeakingTurns(room);
       }
-    }, 1000);
+    );
   });
 
   // Pass active speaking turn

@@ -494,7 +494,6 @@ socket.on('speakingTurnUpdate', ({ activeSpeakerId: speakerId, timeLeft, index, 
   }
 });
 
-// Setup voting page cards
 socket.on('phaseTransition', ({ phase, timeLeft, players }) => {
   currentPhase = phase;
   if (phase === 'VOTING') {
@@ -503,11 +502,19 @@ socket.on('phaseTransition', ({ phase, timeLeft, players }) => {
     votingTimerDisplay.textContent = `${timeLeft}s`;
     showScreen(votingScreen);
 
+    // Check if local player is eliminated
+    const me = roomPlayers.find(pl => pl.sessionToken === sessionToken || pl.id === socket.id);
+    if (me && me.isEliminated) {
+      votingCardsContainer.innerHTML = '<p style="text-align: center; color: var(--accent-danger); font-size: 1.1rem; padding: 20px; grid-column: span 2;">You are eliminated and cannot vote.</p>';
+      return;
+    }
+
     // Render player vote option buttons
     votingCardsContainer.innerHTML = '';
     players.forEach(p => {
       const isMe = (p.id === socket.id || p.id === sessionToken);
       if (isMe) return; // Cannot vote self
+      if (p.isEliminated) return; // Cannot vote for eliminated players
 
       const card = document.createElement('div');
       card.className = 'vote-card';
