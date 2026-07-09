@@ -55,6 +55,7 @@ const settingsArrow = document.getElementById('settings-arrow');
 const btnReady = document.getElementById('btn-ready');
 const btnStart = document.getElementById('btn-start');
 const btnLeave = document.getElementById('btn-leave');
+const btnBackNav = document.getElementById('btn-back-nav');
 
 // Settings Elements
 const settingSpeakingTime = document.getElementById('setting-speaking-time');
@@ -182,7 +183,18 @@ function showScreen(screen) {
     s.classList.add('hidden');
   });
   screen.classList.remove('hidden');
+
+  // Toggle back button visibility (hide on welcome screen, show on all others)
+  if (screen === welcomeScreen) {
+    btnBackNav.classList.add('hidden');
+  } else {
+    btnBackNav.classList.remove('hidden');
+  }
 }
+
+btnBackNav.addEventListener('click', () => {
+  socket.emit('leaveRoom');
+});
 
 // Initial session handshake
 socket.emit('registerSession', { sessionToken });
