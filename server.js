@@ -119,10 +119,11 @@ function nextSpeakingTurn(room) {
 // Start timer for a speaker
 function startSpeakerTimer(room, player) {
   room.activeSpeakerId = player.sessionToken || player.id;
+  const duration = room.settings.gameMode === 'zen' ? 60 : room.settings.speakingTime;
   
   io.to(room.code).emit('speakingTurnUpdate', {
     activeSpeakerId: room.activeSpeakerId,
-    timeLeft: room.settings.speakingTime,
+    timeLeft: duration,
     index: room.speakingIndex + 1,
     total: room.players.filter(p => !p.isEliminated).length
   });
@@ -136,7 +137,7 @@ function startSpeakerTimer(room, player) {
     }, 2500);
   }
 
-  startRoomTimer(room, room.settings.speakingTime, 
+  startRoomTimer(room, duration, 
     (timeLeft) => {
       io.to(room.code).emit('timerUpdate', { timeLeft });
     },
@@ -151,6 +152,12 @@ function startVotingPhase(room) {
   room.phase = 'VOTING';
   room.votes = {}; // voterId -> votedTargetId
   stopRoomTimer(room);
+
+  if (room.cooldownInterval) {
+    clearInterval(room.cooldownInterval);
+    room.cooldownInterval = null;
+  }
+
   broadcastRoomUpdate(room.code);
 
   io.to(room.code).emit('phaseTransition', {
@@ -181,6 +188,7 @@ function endVotingPhase(room) {
 
   // Tally votes
   const tallies = {}; // targetToken -> count
+  tallies['skip'] = 0;
   const activePlayers = room.players.filter(p => !p.isEliminated);
 
   activePlayers.forEach(p => {
@@ -214,19 +222,24 @@ function endVotingPhase(room) {
 
   let eliminatedToken = null;
   let wasTie = false;
+  let eliminatedPlayerName = 'Nobody';
 
   if (highestVoteCount > 0) {
     if (tiedPlayers.length > 1) {
       wasTie = true;
-      if (room.settings.tieBreak === 'revote' && !room.isRevoteActive) {
-        // Run a re-vote between the tied players
+      if (tiedPlayers.includes('skip') || room.settings.tieBreak === 'skip') {
+        // Skip voting elimination
+        eliminatedPlayerName = 'Skip';
+      } else if (room.settings.tieBreak === 'revote' && !room.isRevoteActive) {
+        // Run a re-vote between the tied players (excluding 'skip' if they are voting for actual players now)
         room.isRevoteActive = true;
-        io.to(room.code).emit('announceTie', { tiedPlayerTokens: tiedPlayers });
+        const tiedPlayerList = tiedPlayers.filter(t => t !== 'skip');
+        io.to(room.code).emit('announceTie', { tiedPlayerTokens: tiedPlayerList });
         setTimeout(() => {
-          room.speakingOrder = [...tiedPlayers];
+          room.speakingOrder = [...tiedPlayerList];
           room.speakingIndex = 0;
           room.phase = 'SPEAKING';
-          const firstSpeaker = room.players.find(p => p.sessionToken === tiedPlayers[0]);
+          const firstSpeaker = room.players.find(p => p.sessionToken === tiedPlayerList[0]);
           if (firstSpeaker) {
             startSpeakerTimer(room, firstSpeaker);
           } else {
@@ -234,17 +247,21 @@ function endVotingPhase(room) {
           }
         }, 3000);
         return;
+      } else {
+        eliminatedPlayerName = 'Skip';
       }
-      // If skip or second tie, skip elimination
     } else {
-      eliminatedToken = tiedPlayers[0];
+      if (tiedPlayers[0] === 'skip') {
+        eliminatedPlayerName = 'Skip';
+      } else {
+        eliminatedToken = tiedPlayers[0];
+      }
     }
   }
 
   room.isRevoteActive = false;
   let isImposterEliminated = false;
   let winner = null; // 'CIVILIANS' or 'IMPOSTER'
-  let eliminatedPlayerName = 'Nobody';
 
   if (eliminatedToken) {
     const p = room.players.find(p => p.sessionToken === eliminatedToken);
@@ -317,35 +334,38 @@ function startSpeakingTurns(room) {
   room.phase = 'SPEAKING';
   broadcastRoomUpdate(room.code);
   
-  if (room.settings.gameMode === 'zen') {
-    room.activeSpeakerId = null;
-    stopRoomTimer(room);
+  // Randomize speaking order for all uneliminated players
+  const activePlayers = room.players.filter(p => !p.isEliminated && p.isOnline);
+  room.speakingOrder = activePlayers.map(p => p.sessionToken).sort(() => Math.random() - 0.5);
+  room.speakingIndex = 0;
 
+  // If in Zen Mode, check/broadcast voting cooldown status periodically
+  if (room.settings.gameMode === 'zen') {
+    if (room.cooldownInterval) {
+      clearInterval(room.cooldownInterval);
+    }
     const cooldownLeftMs = room.voteCooldownTime - Date.now();
     if (cooldownLeftMs > 0) {
-      startRoomTimer(room, Math.ceil(cooldownLeftMs / 1000),
-        (timeLeft) => {
-          io.to(room.code).emit('cooldownUpdate', { cooldownLeft: timeLeft });
-        },
-        () => {
-          io.to(room.code).emit('cooldownUpdate', { cooldownLeft: 0 });
+      let cooldownSeconds = Math.ceil(cooldownLeftMs / 1000);
+      room.cooldownInterval = setInterval(() => {
+        cooldownSeconds--;
+        io.to(room.code).emit('cooldownUpdate', { cooldownLeft: Math.max(0, cooldownSeconds) });
+        if (cooldownSeconds <= 0) {
+          clearInterval(room.cooldownInterval);
+          room.cooldownInterval = null;
         }
-      );
+      }, 1000);
+      io.to(room.code).emit('cooldownUpdate', { cooldownLeft: cooldownSeconds });
     } else {
       io.to(room.code).emit('cooldownUpdate', { cooldownLeft: 0 });
     }
-  } else {
-    // Randomize speaking order for all uneliminated players
-    const activePlayers = room.players.filter(p => !p.isEliminated && p.isOnline);
-    room.speakingOrder = activePlayers.map(p => p.sessionToken).sort(() => Math.random() - 0.5);
-    room.speakingIndex = 0;
+  }
 
-    const firstSpeaker = room.players.find(p => p.sessionToken === room.speakingOrder[0]);
-    if (firstSpeaker) {
-      startSpeakerTimer(room, firstSpeaker);
-    } else {
-      startVotingPhase(room);
-    }
+  const firstSpeaker = room.players.find(p => p.sessionToken === room.speakingOrder[0]);
+  if (firstSpeaker) {
+    startSpeakerTimer(room, firstSpeaker);
+  } else {
+    startVotingPhase(room);
   }
 }
 

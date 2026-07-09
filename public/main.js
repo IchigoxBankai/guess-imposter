@@ -511,7 +511,7 @@ socket.on('timerUpdate', ({ timeLeft }) => {
     // Calculate circular timer stroke dashoffset
     const circleRadius = 52;
     const circumference = 2 * Math.PI * circleRadius;
-    const maxTime = parseInt(settingSpeakingTime.value) || 15;
+    const maxTime = (settingGameMode.value === 'zen') ? 60 : (parseInt(settingSpeakingTime.value) || 15);
     const offset = circumference - (timeLeft / maxTime) * circumference;
     timerCircleIndicator.style.strokeDashoffset = offset;
 
@@ -533,60 +533,44 @@ socket.on('speakingTurnUpdate', ({ activeSpeakerId: speakerId, timeLeft, index, 
   showScreen(speakingScreen);
 
   const isZen = (settingGameMode.value === 'zen');
+  timerRingWrapper.classList.remove('hidden');
+  btnStartVoting.classList.toggle('hidden', !isZen);
   
-  if (isZen) {
-    speakingTurnProgress.textContent = 'Zen Mode: Free Discussion';
-    timerRingWrapper.classList.add('hidden');
-    speakingQueueNodes.innerHTML = '';
-    
-    // Customize Speaker box to show general discussion info
-    speakerAvatarBubble.style.backgroundImage = 'none';
-    speakerAvatarBubble.textContent = '💬';
-    speakerNameDisplay.textContent = 'Free Discussion';
-    speakingSubtext.textContent = 'Discuss the words. Anyone can call a vote when ready.';
-    
-    btnPassTurn.classList.add('hidden');
-    btnStartVoting.classList.remove('hidden');
-  } else {
-    timerRingWrapper.classList.remove('hidden');
-    btnStartVoting.classList.add('hidden');
-    
-    activeSpeakerId = speakerId;
-    speakingTurnProgress.textContent = `Player ${index} of ${total}`;
-    speakingTimerText.textContent = timeLeft;
+  activeSpeakerId = speakerId;
+  speakingTurnProgress.textContent = `Player ${index} of ${total}`;
+  speakingTimerText.textContent = timeLeft;
 
-    // Initialize ring circle stroke progress
-    const circleRadius = 52;
-    const circumference = 2 * Math.PI * circleRadius;
-    timerCircleIndicator.style.strokeDasharray = `${circumference} ${circumference}`;
-    timerCircleIndicator.style.strokeDashoffset = 0;
+  // Initialize ring circle stroke progress
+  const circleRadius = 52;
+  const circumference = 2 * Math.PI * circleRadius;
+  timerCircleIndicator.style.strokeDasharray = `${circumference} ${circumference}`;
+  timerCircleIndicator.style.strokeDashoffset = 0;
 
-    // Render queue list progress dots
-    speakingQueueNodes.innerHTML = '';
-    roomPlayers.filter(p => !p.isEliminated).forEach((p, idx) => {
-      const node = document.createElement('div');
-      node.className = `queue-node${idx === (index - 1) ? ' active' : ''}${idx < (index - 1) ? ' done' : ''}`;
-      renderAvatar(node, p.avatar);
-      speakingQueueNodes.appendChild(node);
-    });
+  // Render queue list progress dots
+  speakingQueueNodes.innerHTML = '';
+  roomPlayers.filter(p => !p.isEliminated).forEach((p, idx) => {
+    const node = document.createElement('div');
+    node.className = `queue-node${idx === (index - 1) ? ' active' : ''}${idx < (index - 1) ? ' done' : ''}`;
+    renderAvatar(node, p.avatar);
+    speakingQueueNodes.appendChild(node);
+  });
 
-    // Render speaker details
-    const currentSpeaker = roomPlayers.find(p => p.id === speakerId || p.sessionToken === speakerId);
-    if (currentSpeaker) {
-      renderAvatar(speakerAvatarBubble, currentSpeaker.avatar);
-      speakerNameDisplay.textContent = currentSpeaker.name;
-      
-      const isMeSpeaking = (currentSpeaker.id === socket.id || currentSpeaker.sessionToken === sessionToken);
-      btnPassTurn.classList.toggle('hidden', !isMeSpeaking);
-      
-      if (isMeSpeaking) {
-        speakingSubtext.textContent = 'Speak now! Click Pass Turn when done.';
-        if ('vibrate' in navigator) {
-          navigator.vibrate(100);
-        }
-      } else {
-        speakingSubtext.textContent = 'Please listen to the active player.';
+  // Render speaker details
+  const currentSpeaker = roomPlayers.find(p => p.id === speakerId || p.sessionToken === speakerId);
+  if (currentSpeaker) {
+    renderAvatar(speakerAvatarBubble, currentSpeaker.avatar);
+    speakerNameDisplay.textContent = currentSpeaker.name;
+    
+    const isMeSpeaking = (currentSpeaker.id === socket.id || currentSpeaker.sessionToken === sessionToken);
+    btnPassTurn.classList.toggle('hidden', !isMeSpeaking);
+    
+    if (isMeSpeaking) {
+      speakingSubtext.textContent = 'Speak now! Click Pass Turn when done.';
+      if ('vibrate' in navigator) {
+        navigator.vibrate(100);
       }
+    } else {
+      speakingSubtext.textContent = 'Please listen to the active player.';
     }
   }
 });
@@ -637,6 +621,33 @@ socket.on('phaseTransition', ({ phase, timeLeft, players }) => {
 
       votingCardsContainer.appendChild(card);
     });
+
+    // Append Skip Vote Option
+    const skipCard = document.createElement('div');
+    skipCard.className = 'vote-card';
+    skipCard.dataset.token = 'skip';
+    skipCard.style.borderStyle = 'dashed';
+    skipCard.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+
+    const skipAvatar = document.createElement('div');
+    skipAvatar.className = 'player-avatar';
+    skipAvatar.textContent = '⏭️';
+    skipCard.appendChild(skipAvatar);
+
+    const skipName = document.createElement('div');
+    skipName.className = 'player-name';
+    skipName.textContent = 'Skip Vote';
+    skipCard.appendChild(skipName);
+
+    skipCard.addEventListener('click', () => {
+      document.querySelectorAll('.vote-card').forEach(c => c.classList.remove('selected'));
+      skipCard.classList.add('selected');
+      selectedVoteToken = 'skip';
+      socket.emit('castVote', { targetToken: 'skip' });
+      playSound('tick');
+    });
+
+    votingCardsContainer.appendChild(skipCard);
   }
 });
 
@@ -703,12 +714,62 @@ socket.on('voteReveal', ({ votes, tallies, votesReceived, eliminatedPlayerName, 
     voteRevealPlayers.appendChild(card);
   });
 
+  // Append Skip Vote result card
+  if (tallies['skip'] !== undefined) {
+    const card = document.createElement('div');
+    card.className = 'vote-card';
+    card.style.borderStyle = 'dashed';
+    card.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+
+    const avatar = document.createElement('div');
+    avatar.className = 'player-avatar';
+    avatar.textContent = '⏭️';
+    card.appendChild(avatar);
+
+    const name = document.createElement('div');
+    name.className = 'player-name';
+    name.textContent = 'Skip Vote';
+    card.appendChild(name);
+
+    // List of players who voted to skip
+    const voters = votesReceived['skip'] || [];
+    const votersList = document.createElement('div');
+    votersList.className = 'voters-container';
+    if (voters.length > 0) {
+      voters.forEach(vName => {
+        const voterBadge = document.createElement('div');
+        voterBadge.className = 'voter-mini-avatar';
+        voterBadge.textContent = vName.substring(0, 1);
+        voterBadge.title = `Voted by ${vName}`;
+        votersList.appendChild(voterBadge);
+      });
+    } else {
+      votersList.style.height = '20px';
+    }
+    card.appendChild(votersList);
+
+    const tally = document.createElement('span');
+    tally.style.marginTop = '8px';
+    tally.style.fontWeight = 'bold';
+    tally.textContent = `Votes: ${tallies['skip']}`;
+    card.appendChild(tally);
+
+    voteRevealPlayers.appendChild(card);
+  }
+
   // Display elimination card details
-  eliminationAnnounceBox.innerHTML = `
-    <h3 style="font-size: 1.6rem; color: var(--accent-danger); margin-bottom: 8px;">${eliminatedPlayerName}</h3>
-    <p>${eliminatedPlayerName === 'Nobody' ? 'No one was eliminated this round.' : 'Has been eliminated by vote.'}</p>
-    ${eliminatedPlayerName !== 'Nobody' ? `<p style="font-weight: bold; margin-top: 4px;">Role was: ${isImposterEliminated ? '🕵️‍♂️ IMPOSTER' : 'Civilian'}</p>` : ''}
-  `;
+  if (eliminatedPlayerName === 'Skip') {
+    eliminationAnnounceBox.innerHTML = `
+      <h3 style="font-size: 1.6rem; color: var(--accent-warning); margin-bottom: 8px;">Vote Skipped</h3>
+      <p>The vote was skipped. No one was eliminated this round.</p>
+    `;
+  } else {
+    eliminationAnnounceBox.innerHTML = `
+      <h3 style="font-size: 1.6rem; color: var(--accent-danger); margin-bottom: 8px;">${eliminatedPlayerName}</h3>
+      <p>${eliminatedPlayerName === 'Nobody' ? 'No one was eliminated this round.' : 'Has been eliminated by vote.'}</p>
+      ${eliminatedPlayerName !== 'Nobody' ? `<p style="font-weight: bold; margin-top: 4px;">Role was: ${isImposterEliminated ? '🕵️‍♂️ IMPOSTER' : 'Civilian'}</p>` : ''}
+    `;
+  }
   playSound('eliminate');
 
   if (winner) {
