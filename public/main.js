@@ -467,6 +467,10 @@ socket.on('roomStateUpdate', ({ code, players, phase, settings }) => {
     btnReady.classList.remove('hidden');
     btnReady.textContent = me && me.isReady ? 'Unready' : 'Ready Up';
   }
+  if (phase === 'LOBBY' && currentPhase !== 'LOBBY') {
+    currentPhase = 'LOBBY';
+    showScreen(lobbyScreen);
+  }
 });
 
 // Handlers for game progression phases
@@ -827,9 +831,9 @@ function showScoreboardScreen(winner, scoreboard) {
     }
   });
 
-  // Return to Lobby & Play Again buttons visibility
-  btnPlayAgain.classList.toggle('hidden', !isHost);
-  btnLobbyReturn.classList.toggle('hidden', !isHost);
+  // Return to Lobby & Play Again buttons visibility (always visible to all players)
+  btnPlayAgain.classList.remove('hidden');
+  btnLobbyReturn.classList.remove('hidden');
 }
 
 btnLobbyReturn.addEventListener('click', () => {

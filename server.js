@@ -690,9 +690,9 @@ io.on('connection', (socket) => {
     startGameAuthoritative(room);
   });
 
-  // Play Again (directly start new match from Results, Host only)
+  // Play Again (directly start new match from Results, any player)
   socket.on('playAgain', () => {
-    const session = Object.values(sessions).find(s => s.roomCode && rooms[s.roomCode] && rooms[s.roomCode].players.some(p => p.id === socket.id && p.isHost));
+    const session = Object.values(sessions).find(s => s.roomCode && rooms[s.roomCode]);
     if (!session) return;
 
     const room = rooms[session.roomCode];
