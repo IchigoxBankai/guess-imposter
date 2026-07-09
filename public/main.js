@@ -93,6 +93,7 @@ const victoryTitle = document.getElementById('victory-title');
 const victorySub = document.getElementById('victory-sub');
 const scoreboardRows = document.getElementById('scoreboard-rows');
 const btnLobbyReturn = document.getElementById('btn-lobby-return');
+const btnPlayAgain = document.getElementById('btn-play-again');
 
 // Load initial statistics
 function updateStatsUI() {
@@ -193,7 +194,11 @@ function showScreen(screen) {
 }
 
 btnBackNav.addEventListener('click', () => {
-  socket.emit('leaveRoom');
+  if (currentPhase === 'RESULTS') {
+    socket.emit('returnToLobby');
+  } else {
+    socket.emit('leaveRoom');
+  }
 });
 
 // Initial session handshake
@@ -689,12 +694,17 @@ function showScoreboardScreen(winner, scoreboard) {
     }
   });
 
-  // Return to Lobby button handling
+  // Return to Lobby & Play Again buttons visibility
+  btnPlayAgain.classList.toggle('hidden', !isHost);
   btnLobbyReturn.classList.toggle('hidden', !isHost);
 }
 
 btnLobbyReturn.addEventListener('click', () => {
   socket.emit('returnToLobby');
+});
+
+btnPlayAgain.addEventListener('click', () => {
+  socket.emit('playAgain');
 });
 
 // Reaction Broadcasting

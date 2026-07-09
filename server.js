@@ -327,6 +327,45 @@ function startSpeakingTurns(room) {
   }
 }
 
+function startGameAuthoritative(room) {
+  room.phase = 'ROLE_REVEAL';
+  const wordPair = words[Math.floor(Math.random() * words.length)];
+  room.wordPair = wordPair;
+
+  const imposterIndex = Math.floor(Math.random() * room.players.length);
+  const imposter = room.players[imposterIndex];
+  room.imposterId = imposter.id;
+  room.imposterToken = imposter.sessionToken;
+
+  const coinFlip = Math.random() < 0.5;
+  const commonWord = coinFlip ? wordPair.word1 : wordPair.word2;
+  const imposterWord = coinFlip ? wordPair.word2 : wordPair.word1;
+
+  room.players.forEach(p => {
+    p.isEliminated = false;
+    p.word = (p.sessionToken === room.imposterToken) ? imposterWord : commonWord;
+  });
+
+  broadcastRoomUpdate(room.code);
+
+  room.players.forEach(p => {
+    io.to(p.id).emit('roleRevealInit', {
+      word: p.word,
+      role: (p.sessionToken === room.imposterToken) ? 'IMPOSTER' : 'CIVILIAN',
+      timeLeft: 5
+    });
+  });
+
+  startRoomTimer(room, 5,
+    (timeLeft) => {
+      io.to(room.code).emit('timerUpdate', { timeLeft });
+    },
+    () => {
+      startSpeakingTurns(room);
+    }
+  );
+}
+
 io.on('connection', (socket) => {
   console.log(`Connected: ${socket.id}`);
 
@@ -591,44 +630,28 @@ io.on('connection', (socket) => {
       return;
     }
 
-    // Initialize Game state Authoritatively
-    room.phase = 'ROLE_REVEAL';
-    const wordPair = words[Math.floor(Math.random() * words.length)];
-    room.wordPair = wordPair;
+    // Check if all players are ready
+    const unreadyPlayers = room.players.filter(p => !p.isReady);
+    if (unreadyPlayers.length > 0) {
+      socket.emit('errorMsg', `Cannot start. Waiting for players to ready: ${unreadyPlayers.map(p => p.name).join(', ')}`);
+      return;
+    }
 
-    const imposterIndex = Math.floor(Math.random() * room.players.length);
-    const imposter = room.players[imposterIndex];
-    room.imposterId = imposter.id;
-    room.imposterToken = imposter.sessionToken;
+    startGameAuthoritative(room);
+  });
 
-    const coinFlip = Math.random() < 0.5;
-    const commonWord = coinFlip ? wordPair.word1 : wordPair.word2;
-    const imposterWord = coinFlip ? wordPair.word2 : wordPair.word1;
+  // Play Again (directly start new match from Results, Host only)
+  socket.on('playAgain', () => {
+    const session = Object.values(sessions).find(s => s.roomCode && rooms[s.roomCode] && rooms[s.roomCode].players.some(p => p.id === socket.id && p.isHost));
+    if (!session) return;
 
-    room.players.forEach(p => {
-      p.isEliminated = false;
-      p.word = (p.sessionToken === room.imposterToken) ? imposterWord : commonWord;
-    });
+    const room = rooms[session.roomCode];
+    if (room.players.length < 2) {
+      socket.emit('errorMsg', 'Need at least 2 players to start');
+      return;
+    }
 
-    // Notify clients of role reveal and set 5-second countdown timer
-    broadcastRoomUpdate(room.code);
-
-    room.players.forEach(p => {
-      io.to(p.id).emit('roleRevealInit', {
-        word: p.word,
-        role: (p.sessionToken === room.imposterToken) ? 'IMPOSTER' : 'CIVILIAN',
-        timeLeft: 5
-      });
-    });
-
-    startRoomTimer(room, 5,
-      (timeLeft) => {
-        io.to(room.code).emit('timerUpdate', { timeLeft });
-      },
-      () => {
-        startSpeakingTurns(room);
-      }
-    );
+    startGameAuthoritative(room);
   });
 
   // Pass active speaking turn
@@ -669,15 +692,17 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Return to Lobby after Results
+  // Return to Lobby after Results (Allowed by anyone if phase is RESULTS)
   socket.on('returnToLobby', () => {
-    const session = Object.values(sessions).find(s => s.roomCode && rooms[s.roomCode] && rooms[s.roomCode].players.some(p => p.id === socket.id && p.isHost));
+    const session = Object.values(sessions).find(s => s.roomCode && rooms[s.roomCode] && rooms[s.roomCode].players.some(p => p.id === socket.id));
     if (!session) return;
 
     const room = rooms[session.roomCode];
+    if (!room || room.phase !== 'RESULTS') return;
+
     room.phase = 'LOBBY';
     room.players.forEach(p => {
-      p.isReady = p.isHost; // Host stays ready
+      p.isReady = p.isHost; // Host stays ready, guests need to ready up again
       p.isEliminated = false;
       p.word = null;
     });
