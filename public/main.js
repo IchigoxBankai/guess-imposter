@@ -38,7 +38,6 @@ const nameInput = document.getElementById('player-name');
 const avatarPreview = document.getElementById('avatar-preview');
 const roomCodeInput = document.getElementById('room-code-input');
 const btnCreate = document.getElementById('btn-create');
-const btnDemo = document.getElementById('btn-demo');
 const btnJoin = document.getElementById('btn-join');
 const statsGames = document.getElementById('stats-games');
 const statsWins = document.getElementById('stats-wins');
@@ -298,12 +297,6 @@ btnCreate.addEventListener('click', () => {
   }
   myName = name;
   socket.emit('createRoom', { sessionToken, name, avatar: myAvatar });
-});
-
-btnDemo.addEventListener('click', () => {
-  const name = nameInput.value.trim() || 'Player';
-  myName = name;
-  socket.emit('createDemoRoom', { sessionToken, name, avatar: myAvatar });
 });
 
 btnJoin.addEventListener('click', () => {
