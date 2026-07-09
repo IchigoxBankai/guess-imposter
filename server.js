@@ -457,6 +457,7 @@ io.on('connection', (socket) => {
   // Create Room
   socket.on('createRoom', ({ sessionToken, name, avatar, settings }) => {
     const code = generateRoomCode();
+    console.log(`Room created: ${code} by player ${name} (session: ${sessionToken})`);
     rooms[code] = {
       code,
       players: [],
@@ -506,9 +507,12 @@ io.on('connection', (socket) => {
   // Join Room
   socket.on('joinRoom', ({ sessionToken, roomCode, name, avatar }) => {
     const code = roomCode.toUpperCase().trim();
+    console.log(`Join attempt: Player ${name} (session: ${sessionToken}) is trying to join room ${code}`);
+    console.log(`Active rooms on server:`, Object.keys(rooms));
     const room = rooms[code];
 
     if (!room) {
+      console.log(`Join failed: Room ${code} not found`);
       socket.emit('errorMsg', 'Room not found');
       return;
     }
