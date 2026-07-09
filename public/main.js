@@ -43,6 +43,8 @@ const btnJoin = document.getElementById('btn-join');
 const statsGames = document.getElementById('stats-games');
 const statsWins = document.getElementById('stats-wins');
 const statsStreak = document.getElementById('stats-streak');
+const avatarUpload = document.getElementById('avatar-upload');
+const btnBrowseAvatar = document.getElementById('btn-browse-avatar');
 
 // Lobby Screen
 const displayRoomCode = document.getElementById('display-room-code');
@@ -170,6 +172,19 @@ function spawnFloatingEmoji(emoji, targetNode) {
   setTimeout(() => span.remove(), 1500);
 }
 
+function renderAvatar(element, avatarString) {
+  if (!avatarString) return;
+  if (avatarString.startsWith('data:image/') || avatarString.startsWith('http') || avatarString.length > 50) {
+    element.textContent = '';
+    element.style.backgroundImage = `url(${avatarString})`;
+    element.style.backgroundSize = 'cover';
+    element.style.backgroundPosition = 'center';
+  } else {
+    element.style.backgroundImage = 'none';
+    element.textContent = avatarString;
+  }
+}
+
 // Error Message Banner Display
 function showError(msg) {
   errorBannerText.textContent = msg;
@@ -206,7 +221,7 @@ socket.emit('registerSession', { sessionToken });
 
 socket.on('sessionRegistered', ({ avatar }) => {
   myAvatar = avatar;
-  avatarPreview.textContent = avatar;
+  renderAvatar(avatarPreview, avatar);
   avatarIndex = AVATARS.indexOf(avatar);
 });
 
@@ -237,8 +252,34 @@ socket.on('sessionRestored', ({ roomCode, name, avatar, isHost: hostStatus, phas
 avatarPreview.addEventListener('click', () => {
   avatarIndex = (avatarIndex + 1) % AVATARS.length;
   myAvatar = AVATARS[avatarIndex];
+  avatarPreview.style.backgroundImage = 'none';
   avatarPreview.textContent = myAvatar;
   playSound('tick');
+});
+
+// Trigger Browse File Click
+btnBrowseAvatar.addEventListener('click', (e) => {
+  e.stopPropagation();
+  avatarUpload.click();
+});
+
+// Read and Preview Custom File Upload
+avatarUpload.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target.result;
+      myAvatar = dataUrl;
+      
+      avatarPreview.textContent = '';
+      avatarPreview.style.backgroundImage = `url(${dataUrl})`;
+      avatarPreview.style.backgroundSize = 'cover';
+      avatarPreview.style.backgroundPosition = 'center';
+      playSound('tick');
+    };
+    reader.readAsDataURL(file);
+  }
 });
 
 // Welcome Screen Controls
@@ -375,7 +416,7 @@ socket.on('roomStateUpdate', ({ code, players, phase, settings }) => {
 
     const avatar = document.createElement('div');
     avatar.className = 'player-avatar';
-    avatar.textContent = p.avatar;
+    renderAvatar(avatar, p.avatar);
     card.appendChild(avatar);
 
     const name = document.createElement('div');
@@ -497,14 +538,14 @@ socket.on('speakingTurnUpdate', ({ activeSpeakerId: speakerId, timeLeft, index, 
   roomPlayers.filter(p => !p.isEliminated).forEach((p, idx) => {
     const node = document.createElement('div');
     node.className = `queue-node${idx === (index - 1) ? ' active' : ''}${idx < (index - 1) ? ' done' : ''}`;
-    node.textContent = p.avatar;
+    renderAvatar(node, p.avatar);
     speakingQueueNodes.appendChild(node);
   });
 
   // Render speaker detail details
   const currentSpeaker = roomPlayers.find(p => p.id === speakerId || p.sessionToken === speakerId);
   if (currentSpeaker) {
-    speakerAvatarBubble.textContent = currentSpeaker.avatar;
+    renderAvatar(speakerAvatarBubble, currentSpeaker.avatar);
     speakerNameDisplay.textContent = currentSpeaker.name;
     
     const isMeSpeaking = (currentSpeaker.id === socket.id || currentSpeaker.sessionToken === sessionToken);
@@ -549,7 +590,7 @@ socket.on('phaseTransition', ({ phase, timeLeft, players }) => {
       
       const avatar = document.createElement('div');
       avatar.className = 'player-avatar';
-      avatar.textContent = p.avatar;
+      renderAvatar(avatar, p.avatar);
       card.appendChild(avatar);
 
       const name = document.createElement('div');
@@ -597,7 +638,7 @@ socket.on('voteReveal', ({ votes, tallies, votesReceived, eliminatedPlayerName, 
     
     const avatar = document.createElement('div');
     avatar.className = 'player-avatar';
-    avatar.textContent = p.avatar;
+    renderAvatar(avatar, p.avatar);
     card.appendChild(avatar);
 
     const name = document.createElement('div');
@@ -664,7 +705,16 @@ function showScoreboardScreen(winner, scoreboard) {
     
     // Player cell with avatar
     const nameCell = document.createElement('td');
-    nameCell.innerHTML = `<span style="margin-right: 8px;">${p.avatar}</span> ${p.name}`;
+    const avatarSpan = document.createElement('span');
+    avatarSpan.style.display = 'inline-block';
+    avatarSpan.style.width = '24px';
+    avatarSpan.style.height = '24px';
+    avatarSpan.style.borderRadius = '50%';
+    avatarSpan.style.verticalAlign = 'middle';
+    avatarSpan.style.marginRight = '8px';
+    renderAvatar(avatarSpan, p.avatar);
+    nameCell.appendChild(avatarSpan);
+    nameCell.appendChild(document.createTextNode(` ${p.name}`));
     row.appendChild(nameCell);
 
     // Role cell
