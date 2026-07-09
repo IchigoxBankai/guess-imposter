@@ -225,6 +225,11 @@ socket.on('sessionRegistered', ({ avatar }) => {
   myAvatar = avatar;
   renderAvatar(avatarPreview, avatar);
   avatarIndex = AVATARS.indexOf(avatar);
+  
+  if (welcomeScreen.classList.contains('hidden')) {
+    showScreen(welcomeScreen);
+    showError('Session lost. The room may have ended or the server restarted.');
+  }
 });
 
 socket.on('sessionRestored', ({ roomCode, name, avatar, isHost: hostStatus, phase, word, settings }) => {
