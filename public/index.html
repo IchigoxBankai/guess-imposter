@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>IMPOSTER - Real-Time Party Game</title>
+  <title>SECRET SIGNAL - Real-Time Party Game</title>
   <meta name="description" content="A premium multiplayer Guess the Imposter game.">
   <link rel="stylesheet" href="style.css">
   <script src="/socket.io/socket.io.js"></script>
@@ -12,7 +12,7 @@
   <div class="app-container" id="app-wrapper">
     <!-- Header -->
     <header class="header">
-      <h1 class="logo">IMPOSTER</h1>
+      <h1 class="logo">SECRET SIGNAL</h1>
     </header>
 
     <!-- Error Banner -->
@@ -26,7 +26,7 @@
       <!-- 1. WELCOME/LANDING SCREEN -->
       <section id="welcome-screen" class="screen">
         <div class="glass-card">
-          <h2>Welcome to Imposter</h2>
+          <h2>Welcome to Secret Signal</h2>
           
           <div class="avatar-selection-container">
             <div id="avatar-preview" class="avatar-preview-box">🐱</div>
@@ -132,9 +132,12 @@
             </div>
           </div>
 
-          <div style="margin-top: 24px; display: flex; gap: 12px;">
-            <button id="btn-ready" class="btn btn-secondary">Ready up</button>
-            <button id="btn-start" class="btn btn-success hidden">Start Game</button>
+          <div style="margin-top: 24px; display: flex; flex-direction: column; gap: 12px;">
+            <div style="display: flex; gap: 12px;">
+              <button id="btn-ready" class="btn btn-secondary">Ready up</button>
+              <button id="btn-start" class="btn btn-success hidden">Start Game</button>
+            </div>
+            <button id="btn-leave" class="btn btn-danger">Leave Room</button>
           </div>
         </div>
       </section>

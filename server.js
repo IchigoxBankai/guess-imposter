@@ -700,6 +700,63 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Leave Room explicitly
+  socket.on('leaveRoom', () => {
+    const session = Object.values(sessions).find(s => s.roomCode && rooms[s.roomCode] && rooms[s.roomCode].players.some(p => p.id === socket.id));
+    if (!session) return;
+
+    const code = session.roomCode;
+    const room = rooms[code];
+    if (!room) return;
+
+    const playerIndex = room.players.findIndex(p => p.id === socket.id);
+    if (playerIndex !== -1) {
+      const removedPlayer = room.players.splice(playerIndex, 1)[0];
+      
+      // Clear session room code reference
+      const token = removedPlayer.sessionToken;
+      if (sessions[token]) {
+        sessions[token].roomCode = null;
+        sessions[token].isHost = false;
+      }
+
+      socket.leave(code);
+      socket.emit('leftRoomSuccess');
+
+      if (room.players.length === 0) {
+        stopRoomTimer(room);
+        delete rooms[code];
+      } else {
+        // Re-elect Host if host left
+        if (removedPlayer.isHost) {
+          const newHost = room.players[0];
+          newHost.isHost = true;
+          if (sessions[newHost.sessionToken]) {
+            sessions[newHost.sessionToken].isHost = true;
+          }
+        }
+
+        // Adjust game phase if active player left
+        if (room.phase === 'SPEAKING' && room.activeSpeakerId === removedPlayer.sessionToken) {
+          nextSpeakingTurn(room);
+        } else if (room.phase === 'VOTING') {
+          delete room.votes[removedPlayer.sessionToken];
+          const activePlayers = room.players.filter(p => !p.isEliminated);
+          const votedCount = Object.keys(room.votes).length;
+          io.to(code).emit('voteProgressUpdate', {
+            votedCount,
+            totalCount: activePlayers.length
+          });
+          if (votedCount >= activePlayers.length) {
+            endVotingPhase(room);
+          }
+        }
+
+        broadcastRoomUpdate(code);
+      }
+    }
+  });
+
   // Handle Disconnect with Offline grace period
   socket.on('disconnect', () => {
     console.log(`Disconnected: ${socket.id}`);

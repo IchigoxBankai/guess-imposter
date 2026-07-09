@@ -54,6 +54,7 @@ const settingsContent = document.getElementById('settings-content');
 const settingsArrow = document.getElementById('settings-arrow');
 const btnReady = document.getElementById('btn-ready');
 const btnStart = document.getElementById('btn-start');
+const btnLeave = document.getElementById('btn-leave');
 
 // Settings Elements
 const settingSpeakingTime = document.getElementById('setting-speaking-time');
@@ -284,6 +285,10 @@ btnStart.addEventListener('click', () => {
   socket.emit('startGame');
 });
 
+btnLeave.addEventListener('click', () => {
+  socket.emit('leaveRoom');
+});
+
 btnCopyCode.addEventListener('click', () => {
   navigator.clipboard.writeText(currentRoomCode).then(() => {
     btnCopyCode.textContent = 'Copied!';
@@ -317,6 +322,11 @@ socket.on('errorMsg', (msg) => {
 socket.on('kicked', () => {
   showScreen(welcomeScreen);
   showError('You have been kicked from the room.');
+});
+
+socket.on('leftRoomSuccess', () => {
+  currentRoomCode = null;
+  showScreen(welcomeScreen);
 });
 
 socket.on('roomStateUpdate', ({ code, players, phase, settings }) => {
