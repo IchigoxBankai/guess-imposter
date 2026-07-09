@@ -304,6 +304,9 @@ function endVotingPhase(room) {
   } else {
     // Start next round of speaking after 6 seconds delay
     setTimeout(() => {
+      if (room.settings.gameMode === 'zen') {
+        room.voteCooldownTime = Date.now() + 60000;
+      }
       startSpeakingTurns(room);
     }, 6000);
   }
@@ -314,16 +317,35 @@ function startSpeakingTurns(room) {
   room.phase = 'SPEAKING';
   broadcastRoomUpdate(room.code);
   
-  // Randomize speaking order for all uneliminated players
-  const activePlayers = room.players.filter(p => !p.isEliminated && p.isOnline);
-  room.speakingOrder = activePlayers.map(p => p.sessionToken).sort(() => Math.random() - 0.5);
-  room.speakingIndex = 0;
+  if (room.settings.gameMode === 'zen') {
+    room.activeSpeakerId = null;
+    stopRoomTimer(room);
 
-  const firstSpeaker = room.players.find(p => p.sessionToken === room.speakingOrder[0]);
-  if (firstSpeaker) {
-    startSpeakerTimer(room, firstSpeaker);
+    const cooldownLeftMs = room.voteCooldownTime - Date.now();
+    if (cooldownLeftMs > 0) {
+      startRoomTimer(room, Math.ceil(cooldownLeftMs / 1000),
+        (timeLeft) => {
+          io.to(room.code).emit('cooldownUpdate', { cooldownLeft: timeLeft });
+        },
+        () => {
+          io.to(room.code).emit('cooldownUpdate', { cooldownLeft: 0 });
+        }
+      );
+    } else {
+      io.to(room.code).emit('cooldownUpdate', { cooldownLeft: 0 });
+    }
   } else {
-    startVotingPhase(room);
+    // Randomize speaking order for all uneliminated players
+    const activePlayers = room.players.filter(p => !p.isEliminated && p.isOnline);
+    room.speakingOrder = activePlayers.map(p => p.sessionToken).sort(() => Math.random() - 0.5);
+    room.speakingIndex = 0;
+
+    const firstSpeaker = room.players.find(p => p.sessionToken === room.speakingOrder[0]);
+    if (firstSpeaker) {
+      startSpeakerTimer(room, firstSpeaker);
+    } else {
+      startVotingPhase(room);
+    }
   }
 }
 
@@ -440,6 +462,7 @@ io.on('connection', (socket) => {
       players: [],
       phase: 'LOBBY',
       settings: settings || {
+        gameMode: 'normal',
         speakingTime: 15,
         votingTime: 20,
         anonVoting: 'yes',
@@ -447,6 +470,7 @@ io.on('connection', (socket) => {
       },
       timerInterval: null,
       timeLeft: 0,
+      voteCooldownTime: 0,
       imposterId: null,
       imposterToken: null,
       wordPair: null,
@@ -575,6 +599,7 @@ io.on('connection', (socket) => {
       players: [],
       phase: 'LOBBY',
       settings: {
+        gameMode: 'normal',
         speakingTime: 15,
         votingTime: 20,
         anonVoting: 'yes',
@@ -582,6 +607,7 @@ io.on('connection', (socket) => {
       },
       timerInterval: null,
       timeLeft: 0,
+      voteCooldownTime: 0,
       imposterId: null,
       imposterToken: null,
       wordPair: null,
@@ -723,6 +749,22 @@ io.on('connection', (socket) => {
         emoji
       });
     }
+  });
+
+  // Call Vote (Zen Mode only)
+  socket.on('callVote', () => {
+    const session = Object.values(sessions).find(s => s.roomCode && rooms[s.roomCode]);
+    if (!session) return;
+
+    const room = rooms[session.roomCode];
+    if (!room || room.phase !== 'SPEAKING' || room.settings.gameMode !== 'zen') return;
+
+    if (room.voteCooldownTime > Date.now()) {
+      socket.emit('errorMsg', 'Voting is currently on cooldown');
+      return;
+    }
+
+    startVotingPhase(room);
   });
 
   // Leave Room explicitly

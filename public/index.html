@@ -106,6 +106,13 @@
             <div id="settings-content" class="hidden">
               <div class="settings-grid">
                 <div class="setting-item">
+                  <label for="setting-game-mode">Game Mode</label>
+                  <select id="setting-game-mode">
+                    <option value="normal" selected>Normal Mode</option>
+                    <option value="zen">Zen Mode</option>
+                  </select>
+                </div>
+                <div class="setting-item">
                   <label for="setting-speaking-time">Speaking Time</label>
                   <select id="setting-speaking-time">
                     <option value="10">10 seconds</option>
@@ -204,6 +211,7 @@
           </div>
 
           <button id="btn-pass-turn" class="btn btn-secondary">Pass Turn</button>
+          <button id="btn-start-voting" class="btn btn-primary hidden" style="margin-top: 12px;">Start Voting</button>
 
           <!-- Interactive Emojis -->
           <div class="emoji-reactions-bar">

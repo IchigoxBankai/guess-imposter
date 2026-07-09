@@ -64,6 +64,7 @@ const settingSpeakingTime = document.getElementById('setting-speaking-time');
 const settingVotingTime = document.getElementById('setting-voting-time');
 const settingAnonVoting = document.getElementById('setting-anon-voting');
 const settingTieBreak = document.getElementById('setting-tie-break');
+const settingGameMode = document.getElementById('setting-game-mode');
 
 // Role Reveal Screen
 const revealCard = document.getElementById('reveal-card');
@@ -80,6 +81,7 @@ const timerRingWrapper = document.getElementById('timer-ring-wrapper');
 const speakerAvatarBubble = document.getElementById('speaker-avatar-bubble');
 const speakerNameDisplay = document.getElementById('speaker-name-display');
 const btnPassTurn = document.getElementById('btn-pass-turn');
+const btnStartVoting = document.getElementById('btn-start-voting');
 
 // Voting Screen
 const votingCardsContainer = document.getElementById('voting-cards-container');
@@ -317,6 +319,7 @@ btnJoin.addEventListener('click', () => {
 // Lobby settings controls (host only)
 function getSettingsFromUI() {
   return {
+    gameMode: settingGameMode.value,
     speakingTime: parseInt(settingSpeakingTime.value),
     votingTime: parseInt(settingVotingTime.value),
     anonVoting: settingAnonVoting.value,
@@ -330,7 +333,7 @@ function updateSettingsOnServer() {
   }
 }
 
-[settingSpeakingTime, settingVotingTime, settingAnonVoting, settingTieBreak].forEach(el => {
+[settingGameMode, settingSpeakingTime, settingVotingTime, settingAnonVoting, settingTieBreak].forEach(el => {
   el.addEventListener('change', updateSettingsOnServer);
 });
 
@@ -446,13 +449,14 @@ socket.on('roomStateUpdate', ({ code, players, phase, settings }) => {
   }
 
   // Update Settings from server state
+  settingGameMode.value = settings.gameMode || 'normal';
   settingSpeakingTime.value = settings.speakingTime;
   settingVotingTime.value = settings.votingTime;
   settingAnonVoting.value = settings.anonVoting;
   settingTieBreak.value = settings.tieBreak;
 
   // Toggle dropdown edit permissions based on host status
-  [settingSpeakingTime, settingVotingTime, settingAnonVoting, settingTieBreak].forEach(el => {
+  [settingGameMode, settingSpeakingTime, settingVotingTime, settingAnonVoting, settingTieBreak].forEach(el => {
     el.disabled = !isHost;
   });
 
@@ -523,41 +527,61 @@ socket.on('speakingTurnUpdate', ({ activeSpeakerId: speakerId, timeLeft, index, 
   currentPhase = 'SPEAKING';
   showScreen(speakingScreen);
 
-  activeSpeakerId = speakerId;
-  speakingTurnProgress.textContent = `Player ${index} of ${total}`;
-  speakingTimerText.textContent = timeLeft;
-
-  // Initialize ring circle stroke progress
-  const circleRadius = 52;
-  const circumference = 2 * Math.PI * circleRadius;
-  timerCircleIndicator.style.strokeDasharray = `${circumference} ${circumference}`;
-  timerCircleIndicator.style.strokeDashoffset = 0;
-
-  // Render queue list progress dots
-  speakingQueueNodes.innerHTML = '';
-  roomPlayers.filter(p => !p.isEliminated).forEach((p, idx) => {
-    const node = document.createElement('div');
-    node.className = `queue-node${idx === (index - 1) ? ' active' : ''}${idx < (index - 1) ? ' done' : ''}`;
-    renderAvatar(node, p.avatar);
-    speakingQueueNodes.appendChild(node);
-  });
-
-  // Render speaker detail details
-  const currentSpeaker = roomPlayers.find(p => p.id === speakerId || p.sessionToken === speakerId);
-  if (currentSpeaker) {
-    renderAvatar(speakerAvatarBubble, currentSpeaker.avatar);
-    speakerNameDisplay.textContent = currentSpeaker.name;
+  const isZen = (settingGameMode.value === 'zen');
+  
+  if (isZen) {
+    speakingTurnProgress.textContent = 'Zen Mode: Free Discussion';
+    timerRingWrapper.classList.add('hidden');
+    speakingQueueNodes.innerHTML = '';
     
-    const isMeSpeaking = (currentSpeaker.id === socket.id || currentSpeaker.sessionToken === sessionToken);
-    btnPassTurn.classList.toggle('hidden', !isMeSpeaking);
+    // Customize Speaker box to show general discussion info
+    speakerAvatarBubble.style.backgroundImage = 'none';
+    speakerAvatarBubble.textContent = '💬';
+    speakerNameDisplay.textContent = 'Free Discussion';
+    speakingSubtext.textContent = 'Discuss the words. Anyone can call a vote when ready.';
     
-    if (isMeSpeaking) {
-      speakingSubtext.textContent = 'Speak now! Click Pass Turn when done.';
-      if ('vibrate' in navigator) {
-        navigator.vibrate(100);
+    btnPassTurn.classList.add('hidden');
+    btnStartVoting.classList.remove('hidden');
+  } else {
+    timerRingWrapper.classList.remove('hidden');
+    btnStartVoting.classList.add('hidden');
+    
+    activeSpeakerId = speakerId;
+    speakingTurnProgress.textContent = `Player ${index} of ${total}`;
+    speakingTimerText.textContent = timeLeft;
+
+    // Initialize ring circle stroke progress
+    const circleRadius = 52;
+    const circumference = 2 * Math.PI * circleRadius;
+    timerCircleIndicator.style.strokeDasharray = `${circumference} ${circumference}`;
+    timerCircleIndicator.style.strokeDashoffset = 0;
+
+    // Render queue list progress dots
+    speakingQueueNodes.innerHTML = '';
+    roomPlayers.filter(p => !p.isEliminated).forEach((p, idx) => {
+      const node = document.createElement('div');
+      node.className = `queue-node${idx === (index - 1) ? ' active' : ''}${idx < (index - 1) ? ' done' : ''}`;
+      renderAvatar(node, p.avatar);
+      speakingQueueNodes.appendChild(node);
+    });
+
+    // Render speaker details
+    const currentSpeaker = roomPlayers.find(p => p.id === speakerId || p.sessionToken === speakerId);
+    if (currentSpeaker) {
+      renderAvatar(speakerAvatarBubble, currentSpeaker.avatar);
+      speakerNameDisplay.textContent = currentSpeaker.name;
+      
+      const isMeSpeaking = (currentSpeaker.id === socket.id || currentSpeaker.sessionToken === sessionToken);
+      btnPassTurn.classList.toggle('hidden', !isMeSpeaking);
+      
+      if (isMeSpeaking) {
+        speakingSubtext.textContent = 'Speak now! Click Pass Turn when done.';
+        if ('vibrate' in navigator) {
+          navigator.vibrate(100);
+        }
+      } else {
+        speakingSubtext.textContent = 'Please listen to the active player.';
       }
-    } else {
-      speakingSubtext.textContent = 'Please listen to the active player.';
     }
   }
 });
@@ -787,5 +811,21 @@ socket.on('receiveReaction', ({ senderId, emoji }) => {
 
   if (target) {
     spawnFloatingEmoji(emoji, target.querySelector('.player-avatar') || target);
+  }
+});
+
+btnStartVoting.addEventListener('click', () => {
+  socket.emit('callVote');
+});
+
+socket.on('cooldownUpdate', ({ cooldownLeft }) => {
+  if (cooldownLeft > 0) {
+    btnStartVoting.disabled = true;
+    btnStartVoting.textContent = `Start Voting (${cooldownLeft}s)`;
+    btnStartVoting.style.opacity = '0.5';
+  } else {
+    btnStartVoting.disabled = false;
+    btnStartVoting.textContent = 'Start Voting';
+    btnStartVoting.style.opacity = '1';
   }
 });
