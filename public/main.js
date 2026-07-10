@@ -500,6 +500,11 @@ socket.on('roleRevealInit', ({ word, role, timeLeft }) => {
   revealBadgeContainer.textContent = role;
   revealBadgeContainer.className = `role-title-reveal ${isImposter ? 'imposter-win-reveal' : 'civilians-win-reveal'}`;
 
+  // Update all word reference displays across other gameplay screens
+  document.querySelectorAll('.my-word-ref-text').forEach(el => {
+    el.textContent = word;
+  });
+
   // Reset card state
   revealCard.classList.remove('flipped');
   revealCountdownText.textContent = `Speaking turns start in ${timeLeft}s...`;
