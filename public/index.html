@@ -17,6 +17,14 @@
       </svg>
     </button>
 
+    <!-- Circular Chat Toggle Button -->
+    <button id="btn-chat-toggle" class="btn-chat-circular hidden" aria-label="Open Chat">
+      <svg viewBox="0 0 24 24" style="width: 22px; height: 22px; display: block;">
+        <path fill="currentColor" d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z"/>
+      </svg>
+      <span id="chat-badge" class="chat-badge hidden"></span>
+    </button>
+
     <!-- Header -->
     <header class="header">
       <img src="logo.jpg" alt="Secret Signal" class="game-logo-img">
@@ -289,6 +297,33 @@
       </section>
 
     </main>
+  </div>
+
+  <!-- Group Chat Drawer Panel -->
+  <div id="chat-drawer" class="chat-drawer hidden">
+    <div class="chat-header">
+      <h3>Room Chat</h3>
+      <button id="btn-chat-close" class="btn-close-chat">&times;</button>
+    </div>
+    <div id="chat-messages" class="chat-messages-container">
+      <!-- Dynamically populated chat messages -->
+    </div>
+    <form id="chat-form" class="chat-input-area">
+      <input type="text" id="chat-input" placeholder="Type a message..." autocomplete="off" maxlength="100">
+      <button type="submit" class="btn-send-message">Send</button>
+    </form>
+  </div>
+
+  <!-- Host Lobby Kick Player Modal Confirmation -->
+  <div id="kick-modal" class="kick-modal-overlay hidden">
+    <div class="glass-card kick-modal-card">
+      <h3 style="margin-bottom: 12px; color: var(--accent-danger);">Kick Player?</h3>
+      <p id="kick-modal-text" style="color: var(--text-secondary); margin-bottom: 20px;">Are you sure you want to kick this player?</p>
+      <div style="display: flex; gap: 12px; justify-content: center; width: 100%;">
+        <button id="btn-confirm-kick" class="btn btn-danger" style="flex: 1; padding: 10px;">Kick</button>
+        <button id="btn-cancel-kick" class="btn btn-secondary" style="flex: 1; padding: 10px;">Cancel</button>
+      </div>
+    </div>
   </div>
 
   <script src="main.js"></script>

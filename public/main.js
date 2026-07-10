@@ -98,6 +98,22 @@ const scoreboardRows = document.getElementById('scoreboard-rows');
 const btnLobbyReturn = document.getElementById('btn-lobby-return');
 const btnPlayAgain = document.getElementById('btn-play-again');
 
+// Group Chat & Kick Modal elements
+const btnChatToggle = document.getElementById('btn-chat-toggle');
+const chatBadge = document.getElementById('chat-badge');
+const chatDrawer = document.getElementById('chat-drawer');
+const btnChatClose = document.getElementById('btn-chat-close');
+const chatMessages = document.getElementById('chat-messages');
+const chatForm = document.getElementById('chat-form');
+const chatInput = document.getElementById('chat-input');
+
+const kickModal = document.getElementById('kick-modal');
+const kickModalText = document.getElementById('kick-modal-text');
+const btnConfirmKick = document.getElementById('btn-confirm-kick');
+const btnCancelKick = document.getElementById('btn-cancel-kick');
+let selectedKickToken = null;
+let unreadCount = 0;
+
 // Load initial statistics
 function updateStatsUI() {
   statsGames.textContent = userStats.games;
@@ -157,17 +173,19 @@ function playSound(type) {
   }
 }
 
-// Float floating emoji animations
-function spawnFloatingEmoji(emoji, targetNode) {
+// Float floating emoji animations in screen center
+function spawnFloatingEmoji(emoji, targetNode = null) {
   const container = document.getElementById('app-wrapper');
   const span = document.createElement('span');
   span.className = 'floating-emoji';
   span.textContent = emoji;
 
-  // Position emoji over source element coordinates
-  const rect = targetNode.getBoundingClientRect();
-  span.style.left = `${rect.left + rect.width / 2 - 10}px`;
-  span.style.top = `${rect.top}px`;
+  // Add random scatter offset around center
+  const offsetRange = 60;
+  const offsetX = (Math.random() - 0.5) * offsetRange;
+  const offsetY = (Math.random() - 0.5) * offsetRange;
+  span.style.marginLeft = `${offsetX}px`;
+  span.style.marginTop = `${offsetY}px`;
 
   container.appendChild(span);
   setTimeout(() => span.remove(), 1500);
@@ -201,11 +219,14 @@ function showScreen(screen) {
   });
   screen.classList.remove('hidden');
 
-  // Toggle back button visibility (hide on welcome screen, show on all others)
+  // Toggle back and chat button visibility (hide on welcome screen, show on all others)
   if (screen === welcomeScreen) {
     btnBackNav.classList.add('hidden');
+    btnChatToggle.classList.add('hidden');
+    chatDrawer.classList.add('hidden');
   } else {
     btnBackNav.classList.remove('hidden');
+    btnChatToggle.classList.remove('hidden');
   }
 }
 
@@ -403,16 +424,14 @@ socket.on('roomStateUpdate', ({ code, players, phase, settings }) => {
     indicator.className = `status-indicator ${p.isOnline ? 'status-online' : 'status-offline'}`;
     card.appendChild(indicator);
 
-    // Kick button (only for Host targeting other players)
-    if (isHost && p.id !== socket.id) {
-      const kickBtn = document.createElement('div');
-      kickBtn.className = 'kick-btn-overlay';
-      kickBtn.innerHTML = '×';
-      kickBtn.onclick = (e) => {
-        e.stopPropagation();
-        socket.emit('kickPlayer', { targetToken: p.id });
+    // If Host clicks another player's card, show confirmation Modal to kick
+    if (isHost && p.sessionToken !== sessionToken) {
+      card.style.cursor = 'pointer';
+      card.onclick = () => {
+        selectedKickToken = p.sessionToken;
+        kickModalText.textContent = `Are you sure you want to kick ${p.name}?`;
+        kickModal.classList.remove('hidden');
       };
-      card.appendChild(kickBtn);
     }
 
     const avatar = document.createElement('div');
@@ -848,33 +867,11 @@ btnPlayAgain.addEventListener('click', () => {
 window.sendReaction = function(emoji) {
   socket.emit('triggerReaction', { emoji });
   
-  // Find local player node card
-  const cards = document.querySelectorAll('.player-lobby-card');
-  let myCard = null;
-  cards.forEach(c => {
-    if (c.classList.contains('is-you')) myCard = c;
-  });
-
-  if (myCard) {
-    spawnFloatingEmoji(emoji, myCard.querySelector('.player-avatar') || myCard);
-  }
+  spawnFloatingEmoji(emoji);
 };
 
 socket.on('receiveReaction', ({ senderId, emoji }) => {
-  // Find sender avatar
-  const selector = currentPhase === 'LOBBY' ? '.player-lobby-card' : '.vote-card';
-  const cards = document.querySelectorAll(selector);
-  
-  let target = null;
-  cards.forEach(c => {
-    if (c.dataset.token === senderId || c.querySelector('.player-name')?.textContent.includes(roomPlayers.find(p => p.sessionToken === senderId)?.name)) {
-      target = c;
-    }
-  });
-
-  if (target) {
-    spawnFloatingEmoji(emoji, target.querySelector('.player-avatar') || target);
-  }
+  spawnFloatingEmoji(emoji);
 });
 
 btnStartVoting.addEventListener('click', () => {
@@ -891,4 +888,77 @@ socket.on('cooldownUpdate', ({ cooldownLeft }) => {
     btnStartVoting.textContent = 'Start Voting';
     btnStartVoting.style.opacity = '1';
   }
+});
+
+// Group Chat toggle & close actions
+btnChatToggle.addEventListener('click', () => {
+  chatDrawer.classList.toggle('hidden');
+  if (!chatDrawer.classList.contains('hidden')) {
+    chatBadge.classList.add('hidden');
+    chatBadge.textContent = '';
+    unreadCount = 0;
+  }
+});
+
+btnChatClose.addEventListener('click', () => {
+  chatDrawer.classList.add('hidden');
+});
+
+chatForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const text = chatInput.value.trim();
+  if (text) {
+    socket.emit('sendMessage', { text });
+    chatInput.value = '';
+  }
+});
+
+socket.on('receiveMessage', ({ senderName, senderAvatar, senderToken, text, timestamp }) => {
+  const isMe = (senderToken === sessionToken);
+  
+  const msgRow = document.createElement('div');
+  msgRow.className = `chat-msg-row ${isMe ? 'outgoing' : 'incoming'}`;
+  
+  const meta = document.createElement('div');
+  meta.className = 'chat-msg-meta';
+  
+  const avatarSpan = document.createElement('span');
+  avatarSpan.style.width = '14px';
+  avatarSpan.style.height = '14px';
+  avatarSpan.style.borderRadius = '50%';
+  avatarSpan.style.display = 'inline-block';
+  renderAvatar(avatarSpan, senderAvatar);
+  
+  meta.appendChild(avatarSpan);
+  meta.appendChild(document.createTextNode(` ${senderName} • ${timestamp}`));
+  msgRow.appendChild(meta);
+  
+  const bubble = document.createElement('div');
+  bubble.className = 'chat-msg-bubble';
+  bubble.textContent = text;
+  msgRow.appendChild(bubble);
+  
+  chatMessages.appendChild(msgRow);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+  
+  if (chatDrawer.classList.contains('hidden') && !isMe) {
+    unreadCount++;
+    chatBadge.textContent = unreadCount;
+    chatBadge.classList.remove('hidden');
+    playSound('tick');
+  }
+});
+
+// Kick Confirmation modal actions
+btnConfirmKick.addEventListener('click', () => {
+  if (selectedKickToken) {
+    socket.emit('kickPlayer', { targetToken: selectedKickToken });
+    selectedKickToken = null;
+  }
+  kickModal.classList.add('hidden');
+});
+
+btnCancelKick.addEventListener('click', () => {
+  selectedKickToken = null;
+  kickModal.classList.add('hidden');
 });

@@ -775,6 +775,28 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Group Chat Message Broadcast
+  socket.on('sendMessage', ({ text }) => {
+    const session = Object.values(sessions).find(s => s.roomCode && rooms[s.roomCode]);
+    if (!session) return;
+
+    const room = rooms[session.roomCode];
+    if (!room) return;
+
+    const player = room.players.find(p => p.id === socket.id);
+    if (!player) return;
+
+    const msgPayload = {
+      senderName: player.name,
+      senderAvatar: player.avatar,
+      senderToken: player.sessionToken,
+      text: text,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+
+    io.to(room.code).emit('receiveMessage', msgPayload);
+  });
+
   // Call Vote (Zen Mode only)
   socket.on('callVote', () => {
     const session = Object.values(sessions).find(s => s.roomCode && rooms[s.roomCode]);
