@@ -337,6 +337,9 @@ label {
   grid-template-columns: repeat(3, 1fr);
   gap: 12px;
   margin-bottom: 24px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 .player-lobby-card {
@@ -602,6 +605,9 @@ label {
   grid-template-columns: 1fr 1fr;
   gap: 16px;
   margin-bottom: 24px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 .vote-card {

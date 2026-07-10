@@ -537,8 +537,8 @@ io.on('connection', (socket) => {
       return;
     }
 
-    if (room.players.length >= 6) {
-      socket.emit('errorMsg', 'Room is full (max 6 players)');
+    if (room.players.length >= 20) {
+      socket.emit('errorMsg', 'Room is full (max 20 players)');
       return;
     }
 
