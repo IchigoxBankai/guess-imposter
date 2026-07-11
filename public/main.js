@@ -500,8 +500,7 @@ socket.on('roleRevealInit', ({ word, role, timeLeft }) => {
   revealSecretWord.textContent = word;
   
   const isImposter = (role === 'IMPOSTER');
-  revealBadgeContainer.textContent = role;
-  revealBadgeContainer.className = `role-title-reveal ${isImposter ? 'imposter-win-reveal' : 'civilians-win-reveal'}`;
+  // Role badge is hidden during initial card reveal to keep roles mysterious
 
   // Update all word reference displays across other gameplay screens
   document.querySelectorAll('.my-word-ref-text').forEach(el => {
