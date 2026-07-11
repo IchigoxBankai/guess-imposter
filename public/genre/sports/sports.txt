@@ -1,0 +1,185 @@
+Football
+Cricket
+Basketball
+Volleyball
+Baseball
+Softball
+Tennis
+Badminton
+Table Tennis
+Squash
+Hockey
+Ice Hockey
+Rugby
+Golf
+Boxing
+Wrestling
+Kabaddi
+Kho Kho
+Chess
+Carrom
+Snooker
+Billiards
+Pool
+Bowling
+Archery
+Fencing
+Gymnastics
+Athletics
+Cycling
+Swimming
+Surfing
+Rowing
+Sailing
+Canoeing
+Kayaking
+Triathlon
+Marathon
+Sprint
+Relay
+High Jump
+Long Jump
+Pole Vault
+Shot Put
+Discus
+Javelin
+Hammer Throw
+Skateboarding
+Roller Skating
+Ice Skating
+Skiing
+Horse Racing
+Formula One
+MotoGP
+Karting
+Weightlifting
+Powerlifting
+Bodybuilding
+Diving
+Dodgeball
+Paintball
+Climbing
+Skydiving
+Fishing
+Hunting
+Yoga
+Referee
+Umpire
+Coach
+Captain
+Goalkeeper
+Defender
+Midfielder
+Striker
+Forward
+Winger
+Center
+Pitcher
+Batsman
+Bowler
+Wicketkeeper
+All Rounder
+Spinner
+Fast Bowler
+Serve
+Volley
+Smash
+Dribble
+Pass
+Shoot
+Tackle
+Header
+Goal
+Penalty
+Free Kick
+Corner Kick
+Offside
+Catch
+Throw
+Run
+Sprint
+Dive
+Block
+Save
+Assist
+Knockout
+Final
+Semi Final
+Quarter Final
+Tournament
+League
+Championship
+Cup
+Medal
+Trophy
+Podium
+Score
+Points
+Victory
+Defeat
+Draw
+Tie
+Champion
+Runner Up
+Arena
+Stadium
+Court
+Field
+Pitch
+Track
+Ring
+Pool
+Gym
+Helmet
+Bat
+Ball
+Racket
+Shuttlecock
+Glove
+Pads
+Helmet
+Jersey
+Boots
+Cleats
+Sneakers
+Whistle
+Net
+Goalpost
+Hoop
+Basket
+Stumps
+Bails
+Boundary
+Six
+Four
+Wicket
+Century
+Half Century
+Hat Trick
+Golden Goal
+Overtime
+Penalty Shootout
+Timeout
+Substitute
+Bench
+Warm Up
+Cool Down
+Fitness
+Endurance
+Strength
+Speed
+Agility
+Balance
+Flexibility
+Reaction
+Stamina
+Training
+Practice
+Exercise
+Workout
+Olympics
+IPL
+NBA
+FIFA
+ICC
+MVP

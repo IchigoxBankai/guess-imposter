@@ -64,6 +64,7 @@ const settingVotingTime = document.getElementById('setting-voting-time');
 const settingAnonVoting = document.getElementById('setting-anon-voting');
 const settingTieBreak = document.getElementById('setting-tie-break');
 const settingGameMode = document.getElementById('setting-game-mode');
+const settingWordGenre = document.getElementById('setting-word-genre');
 
 // Role Reveal Screen
 const revealCard = document.getElementById('reveal-card');
@@ -339,6 +340,7 @@ btnJoin.addEventListener('click', () => {
 function getSettingsFromUI() {
   return {
     gameMode: settingGameMode.value,
+    wordGenre: settingWordGenre.value,
     speakingTime: parseInt(settingSpeakingTime.value),
     votingTime: parseInt(settingVotingTime.value),
     anonVoting: settingAnonVoting.value,
@@ -352,7 +354,7 @@ function updateSettingsOnServer() {
   }
 }
 
-[settingGameMode, settingSpeakingTime, settingVotingTime, settingAnonVoting, settingTieBreak].forEach(el => {
+[settingGameMode, settingWordGenre, settingSpeakingTime, settingVotingTime, settingAnonVoting, settingTieBreak].forEach(el => {
   el.addEventListener('change', updateSettingsOnServer);
 });
 
@@ -467,13 +469,14 @@ socket.on('roomStateUpdate', ({ code, players, phase, settings }) => {
 
   // Update Settings from server state
   settingGameMode.value = settings.gameMode || 'normal';
+  settingWordGenre.value = settings.wordGenre || 'random';
   settingSpeakingTime.value = settings.speakingTime;
   settingVotingTime.value = settings.votingTime;
   settingAnonVoting.value = settings.anonVoting;
   settingTieBreak.value = settings.tieBreak;
 
   // Toggle dropdown edit permissions based on host status
-  [settingGameMode, settingSpeakingTime, settingVotingTime, settingAnonVoting, settingTieBreak].forEach(el => {
+  [settingGameMode, settingWordGenre, settingSpeakingTime, settingVotingTime, settingAnonVoting, settingTieBreak].forEach(el => {
     el.disabled = !isHost;
   });
 

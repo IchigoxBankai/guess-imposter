@@ -369,9 +369,66 @@ function startSpeakingTurns(room) {
   }
 }
 
+function loadGenreWords(genre) {
+  let filepath = '';
+  switch (genre) {
+    case 'general':
+      filepath = path.join(__dirname, 'public', 'genre', 'general', 'Life.txt');
+      break;
+    case 'anime':
+      filepath = path.join(__dirname, 'public', 'genre', 'anime', 'ANIME.txt');
+      break;
+    case 'food':
+      filepath = path.join(__dirname, 'public', 'genre', 'food', 'food.txt');
+      break;
+    case 'nature':
+      filepath = path.join(__dirname, 'public', 'genre', 'nature ,animal', 'animal.txt');
+      break;
+    case 'sports':
+      filepath = path.join(__dirname, 'public', 'genre', 'sports', 'sports.txt');
+      break;
+    case 'technology':
+      filepath = path.join(__dirname, 'public', 'genre', 'technology', 'tech.txt');
+      break;
+    default:
+      return [];
+  }
+
+  try {
+    if (fs.existsSync(filepath)) {
+      const rawContent = fs.readFileSync(filepath, 'utf8');
+      return rawContent
+        .split(/\r?\n|\r/)
+        .map(line => line.trim())
+        .filter(line => line && !line.startsWith('#'));
+    }
+  } catch (err) {
+    console.error(`Error loading genre ${genre}:`, err);
+  }
+  return [];
+}
+
 function startGameAuthoritative(room) {
   room.phase = 'ROLE_REVEAL';
-  const wordPair = words[Math.floor(Math.random() * words.length)];
+  
+  let wordPair;
+  const genre = room.settings.wordGenre || 'random';
+  if (genre !== 'random') {
+    const genreWords = loadGenreWords(genre);
+    if (genreWords && genreWords.length >= 2) {
+      const idx1 = Math.floor(Math.random() * genreWords.length);
+      let idx2 = Math.floor(Math.random() * genreWords.length);
+      while (idx1 === idx2) {
+        idx2 = Math.floor(Math.random() * genreWords.length);
+      }
+      wordPair = { word1: genreWords[idx1], word2: genreWords[idx2] };
+    }
+  }
+
+  if (!wordPair) {
+    wordPair = words[Math.floor(Math.random() * words.length)];
+  }
+  
   room.wordPair = wordPair;
 
   const imposterIndex = Math.floor(Math.random() * room.players.length);
@@ -484,6 +541,7 @@ io.on('connection', (socket) => {
       phase: 'LOBBY',
       settings: settings || {
         gameMode: 'normal',
+        wordGenre: 'random',
         speakingTime: 15,
         votingTime: 20,
         anonVoting: 'yes',
