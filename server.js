@@ -417,10 +417,16 @@ function startGameAuthoritative(room) {
     const genreWords = loadGenreWords(genre);
     if (genreWords && genreWords.length >= 2) {
       const idx1 = Math.floor(Math.random() * genreWords.length);
-      let idx2 = Math.floor(Math.random() * genreWords.length);
-      while (idx1 === idx2) {
-        idx2 = Math.floor(Math.random() * genreWords.length);
-      }
+      
+      // Select a random offset between -4 and +4 (excluding 0) to ensure high similarity
+      const offsets = [-4, -3, -2, -1, 1, 2, 3, 4].filter(offset => {
+        const targetIdx = idx1 + offset;
+        return targetIdx >= 0 && targetIdx < genreWords.length;
+      });
+      
+      const randomOffset = offsets[Math.floor(Math.random() * offsets.length)] || 1;
+      const idx2 = (idx1 + randomOffset + genreWords.length) % genreWords.length;
+
       wordPair = { word1: genreWords[idx1], word2: genreWords[idx2] };
     }
   }
