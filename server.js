@@ -547,7 +547,7 @@ io.on('connection', (socket) => {
       phase: 'LOBBY',
       settings: settings || {
         gameMode: 'normal',
-        wordGenre: 'random',
+        wordGenre: 'general',
         speakingTime: 15,
         votingTime: 20,
         anonVoting: 'yes',

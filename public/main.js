@@ -469,7 +469,7 @@ socket.on('roomStateUpdate', ({ code, players, phase, settings }) => {
 
   // Update Settings from server state
   settingGameMode.value = settings.gameMode || 'normal';
-  settingWordGenre.value = settings.wordGenre || 'random';
+  settingWordGenre.value = settings.wordGenre || 'general';
   settingSpeakingTime.value = settings.speakingTime;
   settingVotingTime.value = settings.votingTime;
   settingAnonVoting.value = settings.anonVoting;
